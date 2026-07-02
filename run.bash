@@ -1,0 +1,1 @@
+./dist/scaner echo.free.beeceptor.com 443
