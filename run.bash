@@ -1,1 +1,1 @@
-./dist/scaner echo.free.beeceptor.com 443
+./dist/scaner kai.ru 443

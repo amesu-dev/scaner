@@ -9,6 +9,7 @@
 
 #include "ssl.hpp"
 #include "utils.hpp"
+#include "research.hpp"
 
 
 
@@ -39,7 +40,7 @@ int main(int argc, char const *argv[]) {
   int sent_len = SSL_write(connection.ssl.handle, message.c_str(), message.size());
   SSL_shutdown(connection.ssl.handle);
   
-  if (sent_len != sizeof(message)) {
+  if (sent_len != message.size()) {
     printf("Failed to send message with code %d %#x\n", sent_len, errno);
     exit(EXIT_FAILURE);
   }
@@ -49,17 +50,27 @@ int main(int argc, char const *argv[]) {
   printf("SUCCESS request\n\n");
 
 
-  nlohmann::json data {};
-  utils::get_crtsh_domains(domain, &data);
+  nlohmann::json crtsh_data {};
+  bool status = research::get_crtsh_domains(domain, &crtsh_data);
+  if (status) printf("Failed to parse crt.sh response!\n");
+
 
   time_t t_begin = time(nullptr);
-  utils::print_domains(data);
+  research::print_crtsh_domains(crtsh_data);
   time_t t_end = time(nullptr);
   printf("DNS response time: %ld seconds\n\n", t_end - t_begin);
 
-  utils::print_fofa_info(
-    utils::ip_to_str((sockaddr*)&connection.client)
-  );
+  
+  nlohmann::json dump_data {};
+  status = research::get_dnsdumpster_domain(domain, &dump_data);
+  if (status) printf("Failed to parse dnsdumpster response!\n");
+  
+  research::print_dnsdumpster(dump_data);
+
+  printf("\n");
+
+  std::string ip = utils::ip_to_str((sockaddr*)&connection.client);
+  research::print_fofa_info(ip);
 
   return 0;
 }

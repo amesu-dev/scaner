@@ -7,14 +7,16 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
-#include <openssl/bio.h>
 
 #include <curl/curl.h>
 
 #include <malloc.h>
 #include <arpa/inet.h>
 #include <stdlib.h>
-#include <string>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <iomanip>
+#include <sstream>
 
 
 
@@ -122,10 +124,19 @@ namespace ssl {
       if (len > 0) continue;
 
       int code = SSL_get_error(conn.ssl.handle, len);
-      if (code != SSL_ERROR_ZERO_RETURN) {
-        printf("ERR happen: %#x (len: %#x)\n", code, len);
+      
+      if (code == SSL_ERROR_SSL || code == SSL_ERROR_SYSCALL) {
+        long err = ERR_get_error();
+        long reason = ERR_GET_REASON(err);
+        if (reason != SSL_R_UNEXPECTED_EOF_WHILE_READING) {
+          printf("SSL ERR: %s (%d/%ld)\n", ERR_reason_error_string(err), code, reason);
+          continue;
+        }
+      } else if (code != SSL_ERROR_ZERO_RETURN) {
+        printf("SSL ERR happen: %#x (len: %#x)\n", code, len);  
         continue;
       }
+      
 
       SSL_free(conn.ssl.handle);
       close(conn.sock);
@@ -134,7 +145,7 @@ namespace ssl {
     }
   }
 
-  struct ::utils::curl_memory http_request(const char* url, const char* auth) {
+  struct ::utils::curl_memory http_request(const char* url, const struct ::curl_slist* headers) {
     struct ::utils::curl_memory message {0, 0};
 
     CURL* curl = curl_easy_init();
@@ -146,11 +157,6 @@ namespace ssl {
     curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
 
-    struct curl_slist *headers = NULL;
-    if (strlen(auth)) {
-      std::string auth_header = "Authorization: "s + auth;
-      headers = curl_slist_append(headers, auth_header.c_str());
-    }
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &message);
@@ -183,7 +189,7 @@ namespace ssl {
     unsigned char hash[EVP_MAX_MD_SIZE];
     EVP_DigestFinal(ctx, hash, &hash_len);
 
-    FILE* file = fopen("fafo.pem", "r");
+    FILE* file = fopen("fofa.pem", "r");
     EVP_PKEY* key = PEM_read_PrivateKey(file, nullptr, nullptr, nullptr);
     // fclose(file);
     

@@ -2,11 +2,14 @@
 #include "utils.hpp"
 
 #include <openssl/ssl.h>
+#include <curl/curl.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <string>
+
 
 
 namespace ssl {
@@ -29,7 +32,7 @@ namespace ssl {
 
   bool validate_cert(SSL* ssl);
 
-  struct ::utils::curl_memory http_request(const char* url, const char* auth = "");
+  struct ::utils::curl_memory http_request(const char* url, const struct ::curl_slist* headers);
 
   std::string rsa_sign(std::string_view info);
   std::string sha256(std::string_view str);
